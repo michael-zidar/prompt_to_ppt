@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt_to_ppt"
+version = "0.1.0"
+description = "Generate PowerPoint slides from text prompts"
+dependencies = [
+    "flask",
+    "pydantic",
+    "python-pptx",
+    "openai",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.package-data]
+"" = ["templates/*.html"]
+

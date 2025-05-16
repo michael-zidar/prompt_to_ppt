@@ -5,7 +5,14 @@ A modular Flask application that generates PowerPoint decks from a text prompt a
 ## Quickstart
 
 ```bash
-pip install -r requirements.txt
+# Install the fast `uv` package manager
+pip install uv
+
+# Create a virtual environment and install dependencies
+uv venv
+uv pip install -e .[dev]
+
+# Run the development server
 cp .env.example .env  # populate environment variables locally
 python -m flask --app app:create_app run
 ```

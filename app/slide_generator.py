@@ -1,13 +1,13 @@
 import json
 from typing import Dict, Any, List
 
-import openai
-
 from .config import get_settings
 
 
 def generate_slide_json(prompt: str, style: Dict[str, Any]) -> List[Dict[str, Any]]:
     settings = get_settings()
+    # Import OpenAI lazily so tests can run without the package installed
+    import openai
     openai.api_key = settings.openai_api_key
 
     system_prompt = (
