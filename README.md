@@ -1,6 +1,6 @@
 # Prompt to PPT
 
-A modular Flask application that generates PowerPoint decks from a text prompt and an optional sample presentation. Style rules are extracted from the sample and applied to the generated deck.
+A modular Flask application that generates PowerPoint decks from a text prompt and an optional sample presentation. Style rules are extracted from the sample and applied to the generated deck. The web interface is styled with Tailwind CSS via CDN for a modern look.
 
 ## Quickstart
 
