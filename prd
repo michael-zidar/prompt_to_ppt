@@ -1,0 +1,162 @@
+# Product Requirements Document (PRD)
+
+## 1. Purpose
+
+Build a **modular local Flask application** that converts (a) a user prompt and (b) an optional sample PowerPoint file into a newly‑generated PowerPoint deck. The system must:
+
+1. Derive style rules from the sample deck.
+2. Call OpenAI to draft slide‑level content as JSON.
+3. Assemble a `.pptx` using Python, fully applying the extracted style.
+
+## 2. Success Metrics
+
+| Metric                         | Target              |
+| ------------------------------ | ------------------- |
+| Deck builds without error      | ≥ 95 % of runs      |
+| Total build time (≤ 20 slides) | ≤ 30 s on an M2 Mac |
+| Regression test pass rate      | 100 % on CI         |
+| Unit test coverage (lines)     | ≥ 80 %              |
+| Dependency CVEs (critical)     | 0                   |
+
+## 3. Scope & Constraints
+
+* **In scope**: Local Flask UI, JSON schema, style extraction (fonts, colors, slide layouts), GPT‑4o integration, automated tests.
+* **Out of scope**: Deployment to cloud, rich media beyond static images, multi‑language support.
+* **Constraints**: `python-pptx` limitations; token ceiling ⇒ impose 1 000‑line hard cap on GPT prompts.
+
+## 4. Users & Stories
+
+* **Analyst (primary)** – “I drag‑and‑drop a sample deck and enter a prompt, then download a polished deck.”
+* **Developer** – “I extend or replace modules without breaking the pipeline.”
+
+## 5. High‑Level Architecture
+
+```
+┌────────────┐  browser  ┌────────────────┐
+│ Flask UI   │◄────────►│Style Extractor│
+└────┬───────┘           └──────┬─────────┘
+     │ prompt+style JSON        │ style JSON
+     ▼                          ▼
+┌─────────────┐  OpenAI API  ┌──────────────┐
+│ Prompt Prep │─────────────►│Content Gen   │
+└────┬────────┘              └────┬─────────┘
+     │ slide JSON                 │ slide JSON
+     ▼                            ▼
+                   ┌────────────────────┐
+                   │ PPTX Renderer      │
+                   └─────────┬──────────┘
+                             ▼
+                        output .pptx
+```
+
+## 6. Module Breakdown
+
+### A. Flask Web Interface
+
+* **Responsibilities**: Route handling, file upload, form submission, download endpoint, basic HTML templates (Jinja2), CSRF protection.
+* **I/O**:
+
+  * `GET /` – render upload + prompt form.
+  * `POST /generate` – process input, kick off build pipeline, return `.pptx`.
+* **Dependencies**: Flask, Flask‑WTF, Dropzone.js (optional for drag‑and‑drop).
+
+### B. Style Extractor
+
+* Parse sample deck using `python‑pptx`.
+* Capture theme colors, fonts, master layouts, slide dimensions.
+* Output `style.json`.
+
+### C. Slide JSON Generator
+
+* Compose system prompt embedding style rules + user prompt.
+* Call OpenAI ChatCompletion (model `gpt‑4o‑mini` baseline).
+* Enforce deterministic JSON with `response_format={"type":"json_object"}`.
+
+### D. PPTX Renderer
+
+* Load `style.json` + `slides.json`.
+* Create masters/templates first, then populate slides.
+* Support images via URL download (requests) into temporary files.
+
+### E. Config & Secrets
+
+* `.env` for API keys; use `pydantic‑settings`.
+* Central `config.py` for default model, max tokens, retry strategy.
+
+### F. Testing Suite
+
+* `pytest` + `pytest‑snapshots` for JSON outputs.
+* Selenium/Playwright smoke test: upload + download flow returns 200.
+* Golden sample decks for visual diff (seek‑bar hashing).
+* CI: GitHub Actions – lint, type‑check, unit/integration tests.
+
+## 7. Data Contracts
+
+```jsonc
+// style.json
+{
+  "theme_colors": {"accent1": "#006699", ...},
+  "fonts": {"title": "Calibri", "body": "Arial"},
+  "layouts": [
+    {"name": "Title and Content", "placeholders": ["title", "body"]}
+  ]
+}
+
+// slides.json
+{
+  "slides": [
+    {
+      "layout": "Title and Content",
+      "elements": {
+        "title": "Market Overview",
+        "body": ["Point 1", "Point 2"]
+      }
+    }
+  ]
+}
+```
+
+## 8. Non‑Functional Requirements
+
+* **Modularity**: each module importable and testable standalone.
+* **Logging**: structured JSON logs (loguru) at INFO and ERROR.
+* **Security**: no key leakage to logs; limit upload size to 50 MB.
+* **Licensing**: MIT for in‑house flexibility.
+
+## 9. Milestones & Timeline (optimistic)
+
+| Week | Deliverable                                   |
+| ---- | --------------------------------------------- |
+| 1    | Repo skeleton, dev‑container, Flask scaffold  |
+| 2    | Style Extractor MVP + unit tests              |
+| 3    | Prompt engineering & JSON schema finalised    |
+| 4    | Slide Generator MVP (text only)               |
+| 5    | Full Renderer with images + Flask integration |
+| 6    | Integration tests, CI, docs                   |
+
+## 10. Acceptance Criteria
+
+1. Given `sample.pptx` and a prompt, submitting the web form returns a `.pptx` matching the sample theme and passes visual diff ≤ 5 % pixel delta.
+2. Error handling: corrupt input deck returns HTTP 400 with descriptive JSON error.
+3. Unit + integration tests green; coverage ≥ 80 %.
+4. `README` shows Docker‑compose one‑liner for local run.
+
+## 11. Risks & Mitigations
+
+| Risk                    | Impact | Mitigation                                       |
+| ----------------------- | ------ | ------------------------------------------------ |
+| OpenAI JSON drift       | High   | Strict `response_format`, JSON schema validation |
+| `python‑pptx` API gaps  | Medium | Fallback to raw XML edit; limit requirements     |
+| Token cost blow‑up      | Medium | Chunk prompts; cap slide count                   |
+| Style fidelity poor     | Low    | Iterate extractor; allow manual overrides        |
+| Flask file upload abuse | Medium | Limit file size, virus scan, CSRF token          |
+
+## 12. Open Questions
+
+1. Minimum PowerPoint version to support? 2007 XML assumed.
+2. Do we need corporate brand palette fallback when no sample deck is provided?
+3. Should we add WebSocket progress updates for long builds?
+
+---
+
+**Reality check**: GPT models hallucinate structure; you will need tight validation loops. Budget time for prompt tuning and regression testing – always the hidden time sink.
