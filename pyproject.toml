@@ -19,5 +19,5 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-"" = ["templates/*.html"]
+app = ["templates/*.html"]
 
