@@ -1,0 +1,5 @@
+flask
+pydantic
+python-pptx
+openai
+pytest
