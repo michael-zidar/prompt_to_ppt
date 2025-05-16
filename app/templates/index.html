@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Prompt to PPT</title>
+  </head>
+  <body>
+    <h1>Create Presentation</h1>
+    <form action="/generate" method="post" enctype="multipart/form-data">
+      <label for="prompt">Prompt:</label><br />
+      <textarea name="prompt" id="prompt" rows="4" cols="50"></textarea><br />
+      <label for="sample">Sample deck:</label>
+      <input type="file" name="sample" id="sample" />
+      <button type="submit">Generate</button>
+    </form>
+  </body>
+</html>
